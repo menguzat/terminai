@@ -1,0 +1,36 @@
+{
+  "name": "terminai",
+  "version": "1.0.0",
+  "description": "AI-enhanced shell wrapper that intelligently interprets commands",
+  "main": "dist/index.js",
+  "bin": {
+    "terminai": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc && node dist/cli.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "cli",
+    "shell",
+    "ai",
+    "terminal",
+    "wrapper",
+    "gemini"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.29",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "readline": "^1.3.0"
+  }
+}
