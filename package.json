@@ -1,5 +1,5 @@
 {
-  "name": "@menguzat/termin-ai",
+  "name": "termin-ai",
   "version": "1.0.0",
   "description": "AI-enhanced shell wrapper that bridges natural language and command line",
   "main": "dist/index.js",
