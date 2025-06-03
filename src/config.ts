@@ -13,19 +13,19 @@ export class ConfigManager {
   }
 
   async ensureGeminiApiKey(): Promise<string> {
-    console.log('[DEBUG] Checking for Gemini API key...');
+   // console.log('[DEBUG] Checking for Gemini API key...');
     
     // Check environment variable first
     const envKey = process.env.GEMINI_API_KEY;
     if (envKey) {
-      console.log('[DEBUG] Found API key in environment variable');
+    //  console.log('[DEBUG] Found API key in environment variable');
       return envKey;
     }
 
     // Check saved config file
     const savedKey = this.loadSavedApiKey();
     if (savedKey) {
-      console.log('[DEBUG] Found API key in saved configuration');
+    //  console.log('[DEBUG] Found API key in saved configuration');
       return savedKey;
     }
 

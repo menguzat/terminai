@@ -20,7 +20,7 @@ export class TerminaiShell {
   }
   
   async start(): Promise<void> {
-    console.log('[DEBUG] TerminaiShell starting...');
+   // console.log('[DEBUG] TerminaiShell starting...');
     
     // Initialize AI service with API key BEFORE setting up readline interface
     try {
@@ -117,7 +117,7 @@ export class TerminaiShell {
     return `[AI] ${username}@${hostname} ${currentDir} % `;
   }
   
-  private async executeCommand(command: string, skipAiTranslation: boolean = false): Promise<void> {
+  private async executeCommand(command: string, skipAiTranslation: boolean = false, originalPrompt?: string): Promise<void> {
     return new Promise((resolve) => {
      // console.log(`[DEBUG] Executing command: ${command}`);
       
@@ -135,6 +135,7 @@ export class TerminaiShell {
       });
       
       let hasOutput = false;
+      let errorOutput = '';
       
       // Handle stdout
       shellProcess.stdout.on('data', (data) => {
@@ -145,6 +146,7 @@ export class TerminaiShell {
       // Handle stderr
       shellProcess.stderr.on('data', (data) => {
         hasOutput = true;
+        errorOutput += data.toString();
         process.stderr.write(data);
       });
       
@@ -153,13 +155,17 @@ export class TerminaiShell {
         if (code === 0) {
        //   console.log(`[DEBUG] Command completed successfully (exit code: ${code})`);
         } else {
-          console.log(`[DEBUG] Command failed (exit code: ${code})`);
+         // console.log(`[DEBUG] Command failed (exit code: ${code})`);
           
           // Phase 4: AI Command Translation Implementation
           // Only attempt AI translation if not already an AI-suggested command
           if (this.aiService && !skipAiTranslation) {
             console.log('🤖 Command failed. Attempting AI translation...');
             await this.handleFailedCommand(command);
+          } else if (skipAiTranslation && originalPrompt) {
+            console.log('❌ AI-suggested command also failed');
+            // Offer to ask AI to fix the failed command
+            await this.handleFailedAiCommand(originalPrompt, command, errorOutput, code || 1);
           } else if (skipAiTranslation) {
             console.log('❌ AI-suggested command also failed');
           } else {
@@ -193,7 +199,7 @@ export class TerminaiShell {
     try {
       process.chdir(targetDir);
       this.currentDirectory = process.cwd();
-      console.log(`[DEBUG] Changed directory to: ${this.currentDirectory}`);
+      //console.log(`[DEBUG] Changed directory to: ${this.currentDirectory}`);
     } catch (error) {
       console.error(`cd: no such file or directory: ${targetDir}`);
     }
@@ -226,13 +232,67 @@ export class TerminaiShell {
         this.addToHistory(originalCommand);
         this.addToHistory(translation.command);
         
-        await this.executeCommand(translation.command, true);
+        await this.executeCommand(translation.command, true, originalCommand);
       } else {
         console.log('❌ Command execution cancelled by user');
       }
     } catch (error) {
       console.error('[DEBUG] Error in AI command translation:', error);
       console.log('❌ Failed to get AI translation');
+    }
+  }
+
+  private async handleFailedAiCommand(originalPrompt: string, failedCommand: string, errorOutput: string, exitCode: number): Promise<void> {
+    try {
+      console.log('🔧 The AI-suggested command failed. Would you like AI to try fixing it?');
+      
+      const userWantsFix = await this.askUserConfirmation('🤔 Ask AI to fix the command? (y/N): ');
+      
+      if (!userWantsFix) {
+        return;
+      }
+      
+      console.log('🔄 Asking AI to fix the failed command...');
+      
+      // Create a detailed prompt with context
+      const fixPrompt = `The user originally asked: "${originalPrompt}"
+      
+You previously suggested this command: ${failedCommand}
+
+But it failed with exit code ${exitCode} and this error output:
+${errorOutput.trim()}
+
+Please provide a corrected command that addresses the error and fulfills the user's original request.`;
+
+      const translation = await this.aiService!.translateCommand(fixPrompt);
+      
+      if (!translation || !translation.command) {
+        console.log('❌ AI could not provide a fix for the command');
+        return;
+      }
+
+      console.log(`💡 AI suggests a fix: ${translation.command}`);
+      if (translation.explanation) {
+        console.log(`📝 Explanation: ${translation.explanation}`);
+      }
+
+      // Ask for user confirmation
+      const userConfirmed = await this.askUserConfirmation('❓ Execute this fixed command? (y/N): ');
+      
+      if (userConfirmed) {
+        console.log('✅ Executing AI-fixed command...');
+        
+        // Add the fixed command to history
+        this.addToHistory(translation.command);
+        
+        // Execute without further AI translation attempts to avoid infinite loops
+        await this.executeCommand(translation.command, true);
+      } else {
+        console.log('❌ Fixed command execution cancelled by user');
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error in AI command fix:', error);
+      console.log('❌ Failed to get AI fix');
     }
   }
 
@@ -252,9 +312,9 @@ export class TerminaiShell {
     }
   }
 
-  private async askUserConfirmation(): Promise<boolean> {
+  private async askUserConfirmation(promptText: string = '❓ Execute this command? (y/N): '): Promise<boolean> {
     return new Promise((resolve) => {
-      this.rl!.question('❓ Execute this command? (y/N): ', (answer) => {
+      this.rl!.question(promptText, (answer) => {
         const response = answer.trim().toLowerCase();
         resolve(response === 'y' || response === 'yes');
       });

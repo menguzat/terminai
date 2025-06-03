@@ -34,6 +34,22 @@ npm install -g termin-ai
 
 That's it! You're ready to use AI-enhanced commands.
 
+## 💖 Support the Project
+
+If terminai has made your command line experience better, consider supporting its development:
+
+<div align="center">
+
+| Cryptocurrency | Address | QR Code |
+|---|---|---|
+| **Bitcoin (BTC)** | `bc1qy6nwnlzfxxr45kav5qnm72fr4s8607e02ace6f` | ![BTC QR](public/btc.png) |
+| **Ethereum (ETH)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | ![ETH QR](public/eth.png) |
+| **Solana (SOL)** | `5PMFQwZJAZg8oVFBKwCmuK8r2vv5F2cRcbGJBGuZNUFF` | ![SOL QR](public/sol.png) |
+| **Binance Coin (BNB)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | ![BNB QR](public/bnb.png) |
+
+</div>
+
+*Your support helps keep terminai free and continuously improving! 🚀*
 ## 💡 Usage Examples
 
 ### Regular Commands Work Normally
@@ -221,6 +237,23 @@ rm ~/.terminai/config.json && terminai
 - **Shell Integration**: Spawns zsh/bash processes for command execution
 - **Completion System**: Custom tab completion with file and command support
 - **Cross-Platform**: macOS, Linux (Windows support coming soon)
+
+## 💖 Support the Project
+
+If terminai has made your command line experience better, consider supporting its development:
+
+<div align="center">
+
+| Cryptocurrency | Address | QR Code |
+|---|---|---|
+| **Bitcoin (BTC)** | `bc1qy6nwnlzfxxr45kav5qnm72fr4s8607e02ace6f` | ![BTC QR](public/btc.png) |
+| **Ethereum (ETH)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | ![ETH QR](public/eth.png) |
+| **Solana (SOL)** | `5PMFQwZJAZg8oVFBKwCmuK8r2vv5F2cRcbGJBGuZNUFF` | ![SOL QR](public/sol.png) |
+| **Binance Coin (BNB)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | ![BNB QR](public/bnb.png) |
+
+</div>
+
+*Your support helps keep terminai free and continuously improving! 🚀*
 
 ## 📝 Development
 
