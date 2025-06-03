@@ -1,7 +1,7 @@
 {
-  "name": "terminai",
+  "name": "@menguzat/termin-ai",
   "version": "1.0.0",
-  "description": "AI-enhanced shell wrapper that intelligently interprets commands",
+  "description": "AI-enhanced shell wrapper that bridges natural language and command line",
   "main": "dist/index.js",
   "bin": {
     "terminai": "./dist/cli.js"
@@ -9,7 +9,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc && node dist/cli.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "cli",
@@ -17,14 +18,31 @@
     "ai",
     "terminal",
     "wrapper",
-    "gemini"
+    "gemini",
+    "command-line",
+    "natural-language",
+    "automation",
+    "productivity"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "meng <mgulmen@gmail.com>",
+  "license": "MIT",
   "type": "commonjs",
   "engines": {
     "node": ">=16.0.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/menguzat/terminai.git"
+  },
+  "homepage": "https://github.com/menguzat/terminai#readme",
+  "bugs": {
+    "url": "https://github.com/menguzat/terminai/issues"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "devDependencies": {
     "@types/node": "^22.15.29",
     "typescript": "^5.8.3"
