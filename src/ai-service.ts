@@ -75,12 +75,7 @@ Remember: Respond with JSON only, no other text.`;
       // Remove markdown code blocks if present
       jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '');
       
-      // Find JSON object in the text if there's extra content
-      const jsonMatch = jsonText.match(/\{[^}]*"command"[^}]*\}/);
-      if (jsonMatch) {
-        jsonText = jsonMatch[0];
-      }
-
+      // Parse the cleaned JSON text directly
       const parsed = JSON.parse(jsonText);
       
       if (parsed.command) {
