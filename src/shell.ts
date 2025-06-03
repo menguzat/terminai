@@ -1,4 +1,4 @@
-import { spawn, ChildProcessWithoutNullStreams, execSync } from 'child_process';
+import { spawn, ChildProcessWithoutNullStreams, execSync, ChildProcess } from 'child_process';
 import * as readline from 'readline';
 import * as os from 'os';
 import * as path from 'path';
@@ -13,6 +13,7 @@ export class TerminaiShell {
   private configManager: ConfigManager;
   private aiService: AiService | null = null;
   private historyFile: string;
+  private currentRunningProcess: ChildProcess | null = null; // Track running process for signal handling
   
   constructor() {
     this.configManager = new ConfigManager();
@@ -98,11 +99,21 @@ export class TerminaiShell {
         });
       };
       
-      // Handle Ctrl+C
+      // Handle Ctrl+C - improved signal handling
       this.rl!.on('SIGINT', () => {
-        console.log('\n👋 Goodbye!');
-        this.cleanup();
-        resolve();
+        if (this.currentRunningProcess) {
+          // Kill the running command instead of exiting terminai
+          console.log('\n🛑 Interrupting running command...');
+          this.currentRunningProcess.kill('SIGINT');
+          this.currentRunningProcess = null;
+          console.log('✅ Command interrupted. Press Enter to continue.');
+          // Don't resolve - just continue to next prompt
+        } else {
+          // No command running, exit terminai
+          console.log('\n👋 Goodbye!');
+          this.cleanup();
+          resolve();
+        }
       });
       
       promptUser();
@@ -129,10 +140,14 @@ export class TerminaiShell {
       }
       
       // For other commands, spawn a new shell process
+      // Fix 1: Use 'inherit' for stdin to allow interactive commands
       const shellProcess = spawn('/bin/zsh', ['-c', command], {
         cwd: this.currentDirectory,
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['inherit', 'pipe', 'pipe'] // Allow interactive input while capturing output
       });
+      
+      // Fix 2: Track the running process for signal handling
+      this.currentRunningProcess = shellProcess;
       
       let hasOutput = false;
       let errorOutput = '';
@@ -152,6 +167,9 @@ export class TerminaiShell {
       
       // Handle process completion
       shellProcess.on('close', async (code) => {
+        // Clear the running process reference
+        this.currentRunningProcess = null;
+        
         if (code === 0) {
        //   console.log(`[DEBUG] Command completed successfully (exit code: ${code})`);
         } else {
@@ -181,8 +199,20 @@ export class TerminaiShell {
       });
       
       shellProcess.on('error', (error) => {
+        // Clear the running process reference on error
+        this.currentRunningProcess = null;
         console.error(`[DEBUG] Shell process error: ${error.message}`);
         resolve();
+      });
+      
+      // Handle process termination (e.g., from SIGINT)
+      shellProcess.on('exit', (code, signal) => {
+        // Clear the running process reference
+        this.currentRunningProcess = null;
+        
+        if (signal === 'SIGINT') {
+          console.log(`[DEBUG] Command was interrupted by user (signal: ${signal})`);
+        }
       });
     });
   }

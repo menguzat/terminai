@@ -37,22 +37,6 @@ npm install -g @menguzat/termin-ai
 
 That's it! You're ready to use AI-enhanced commands.
 
-## 💖 Support the Project
-
-If terminai has made your command line experience better, consider supporting its development:
-
-<div align="center">
-
-| Cryptocurrency | Address | QR Code |
-|---|---|---|
-| **Bitcoin (BTC)** | `bc1qy6nwnlzfxxr45kav5qnm72fr4s8607e02ace6f` | <img src="public/btc.png" alt="BTC QR" width="120"> |
-| **Ethereum (ETH)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | <img src="public/eth.png" alt="ETH QR" width="120"> |
-| **Solana (SOL)** | `5PMFQwZJAZg8oVFBKwCmuK8r2vv5F2cRcbGJBGuZNUFF` | <img src="public/sol.png" alt="SOL QR" width="120"> |
-| **Binance Coin (BNB)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | <img src="public/bnb.png" alt="BNB QR" width="120"> |
-
-</div>
-
-*Your support helps keep terminai free and continuously improving! 🚀*
 ## 💡 Usage Examples
 
 ### Regular Commands Work Normally
@@ -117,6 +101,24 @@ shell.ts  ai-service.ts  config.ts  cli.ts
 [AI] user@hostname project % npm run <TAB>
 build  start  test
 ```
+
+
+## 💖 Support the Project
+
+If terminai has made your command line experience better, consider supporting its development:
+
+<div align="center">
+
+| Cryptocurrency | Address | QR Code |
+|---|---|---|
+| **Bitcoin (BTC)** | `bc1qy6nwnlzfxxr45kav5qnm72fr4s8607e02ace6f` | <img src="public/btc.png" alt="BTC QR" width="120"> |
+| **Ethereum (ETH)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | <img src="public/eth.png" alt="ETH QR" width="120"> |
+| **Solana (SOL)** | `5PMFQwZJAZg8oVFBKwCmuK8r2vv5F2cRcbGJBGuZNUFF` | <img src="public/sol.png" alt="SOL QR" width="120"> |
+| **Binance Coin (BNB)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | <img src="public/bnb.png" alt="BNB QR" width="120"> |
+
+</div>
+
+*Your support helps keep terminai free and continuously improving! 🚀*
 
 ## 🔧 How It Works
 
@@ -239,8 +241,21 @@ rm ~/.terminai/config.json && terminai
 - **AI Model**: Google Gemini 2.5 Flash Preview
 - **Shell Integration**: Spawns zsh/bash processes for command execution
 - **Completion System**: Custom tab completion with file and command support
-- **Cross-Platform**: macOS, Linux (Windows support coming soon)
+- **Cross-Platform**: See Platform Compatibility section below
 
+## 🖥️ Platform Compatibility
+
+### ✅ Fully Tested & Supported
+- **macOS** - Extensively tested and working perfectly with zsh/bash
+
+### ⚡ Should Work (Not Yet Fully Tested)  
+- **Linux** - Should work out-of-the-box on most distributions with bash/zsh
+- **Windows** - Should work but may have minor compatibility issues
+  - May require manual shell configuration in some cases
+  - Cross-platform improvements planned (see our GitHub issues)
+
+### 🔄 Testing Status
+We're actively working on comprehensive cross-platform testing. If you encounter issues on Linux or Windows, please [report them](https://github.com/menguzat/terminai/issues) - we'd love your feedback to improve compatibility!
 
 ## 📝 Development
 
