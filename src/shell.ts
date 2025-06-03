@@ -2,6 +2,7 @@ import { spawn, ChildProcessWithoutNullStreams, execSync } from 'child_process';
 import * as readline from 'readline';
 import * as os from 'os';
 import * as path from 'path';
+import * as fs from 'fs';
 import { ConfigManager } from './config';
 import { AiService } from './ai-service';
 
@@ -11,9 +12,11 @@ export class TerminaiShell {
   private currentDirectory: string = process.cwd();
   private configManager: ConfigManager;
   private aiService: AiService | null = null;
+  private historyFile: string;
   
   constructor() {
     this.configManager = new ConfigManager();
+    this.historyFile = path.join(os.homedir(), '.terminai', 'history');
   }
   
   async start(): Promise<void> {
@@ -46,6 +49,9 @@ export class TerminaiShell {
       output: process.stdout,
       completer: this.completer.bind(this)
     });
+    
+    // Load command history from file
+    this.loadHistory();
     
     // Start the interactive loop
     this.showWelcome();
@@ -214,6 +220,12 @@ export class TerminaiShell {
       
       if (userConfirmed) {
         console.log('✅ Executing AI-suggested command...');
+        
+        // Add both commands to history before execution
+        // Add the original prompt first, then the AI command (so AI command is most recent)
+        this.addToHistory(originalCommand);
+        this.addToHistory(translation.command);
+        
         await this.executeCommand(translation.command, true);
       } else {
         console.log('❌ Command execution cancelled by user');
@@ -221,6 +233,22 @@ export class TerminaiShell {
     } catch (error) {
       console.error('[DEBUG] Error in AI command translation:', error);
       console.log('❌ Failed to get AI translation');
+    }
+  }
+
+  private addToHistory(command: string): void {
+    if (this.rl) {
+      // Add to readline history - this makes it available with up arrow
+      // Note: history property exists at runtime but isn't in type definitions
+      const readlineWithHistory = this.rl as any;
+      if (readlineWithHistory.history) {
+        readlineWithHistory.history.unshift(command);
+        
+        // Limit history size to prevent memory issues
+        if (readlineWithHistory.history.length > 1000) {
+          readlineWithHistory.history = readlineWithHistory.history.slice(0, 500);
+        }
+      }
     }
   }
 
@@ -335,7 +363,50 @@ export class TerminaiShell {
     }
   }
   
+  private loadHistory(): void {
+    try {
+      if (fs.existsSync(this.historyFile)) {
+        const historyContent = fs.readFileSync(this.historyFile, 'utf8');
+        const historyLines = historyContent.trim().split('\n').filter(line => line.length > 0);
+        
+        if (this.rl) {
+          const readlineWithHistory = this.rl as any;
+          if (readlineWithHistory.history) {
+            // Load history in reverse order since readline history is LIFO
+            readlineWithHistory.history = historyLines.reverse();
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error loading history:', error);
+    }
+  }
+
+  private saveHistory(): void {
+    try {
+      if (this.rl) {
+        const readlineWithHistory = this.rl as any;
+        if (readlineWithHistory.history && readlineWithHistory.history.length > 0) {
+          // Ensure the .terminai directory exists
+          const historyDir = path.dirname(this.historyFile);
+          if (!fs.existsSync(historyDir)) {
+            fs.mkdirSync(historyDir, { recursive: true });
+          }
+          
+          // Save history (reverse since readline history is LIFO, but we want FIFO in file)
+          const historyToSave = [...readlineWithHistory.history].reverse().slice(0, 1000); // Keep last 1000 commands
+          fs.writeFileSync(this.historyFile, historyToSave.join('\n') + '\n');
+        }
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error saving history:', error);
+    }
+  }
+  
   private cleanup(): void {
+    // Save history before cleanup
+    this.saveHistory();
+    
     if (this.rl) {
       this.rl.close();
     }
