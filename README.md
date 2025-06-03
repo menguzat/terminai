@@ -3,6 +3,9 @@
 **An AI-enhanced shell wrapper that bridges natural language and command line**
 
 Terminai transforms your terminal experience by adding AI-powered command translation on top of your existing shell. Write commands naturally or use plain English - terminai understands both.
+## 🎬 Demo
+
+![Terminai Demo](public/terminai.gif)
 
 ## ✨ Features
 
@@ -18,7 +21,7 @@ Terminai transforms your terminal experience by adding AI-powered command transl
 ### Installation
 
 ```bash
-npm install -g termin-ai
+npm install -g @menguzat/termin-ai
 ```
 
 ### Setup
@@ -42,10 +45,10 @@ If terminai has made your command line experience better, consider supporting it
 
 | Cryptocurrency | Address | QR Code |
 |---|---|---|
-| **Bitcoin (BTC)** | `bc1qy6nwnlzfxxr45kav5qnm72fr4s8607e02ace6f` | ![BTC QR](public/btc.png) |
-| **Ethereum (ETH)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | ![ETH QR](public/eth.png) |
-| **Solana (SOL)** | `5PMFQwZJAZg8oVFBKwCmuK8r2vv5F2cRcbGJBGuZNUFF` | ![SOL QR](public/sol.png) |
-| **Binance Coin (BNB)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | ![BNB QR](public/bnb.png) |
+| **Bitcoin (BTC)** | `bc1qy6nwnlzfxxr45kav5qnm72fr4s8607e02ace6f` | <img src="public/btc.png" alt="BTC QR" width="120"> |
+| **Ethereum (ETH)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | <img src="public/eth.png" alt="ETH QR" width="120"> |
+| **Solana (SOL)** | `5PMFQwZJAZg8oVFBKwCmuK8r2vv5F2cRcbGJBGuZNUFF` | <img src="public/sol.png" alt="SOL QR" width="120"> |
+| **Binance Coin (BNB)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | <img src="public/bnb.png" alt="BNB QR" width="120"> |
 
 </div>
 
@@ -238,22 +241,6 @@ rm ~/.terminai/config.json && terminai
 - **Completion System**: Custom tab completion with file and command support
 - **Cross-Platform**: macOS, Linux (Windows support coming soon)
 
-## 💖 Support the Project
-
-If terminai has made your command line experience better, consider supporting its development:
-
-<div align="center">
-
-| Cryptocurrency | Address | QR Code |
-|---|---|---|
-| **Bitcoin (BTC)** | `bc1qy6nwnlzfxxr45kav5qnm72fr4s8607e02ace6f` | ![BTC QR](public/btc.png) |
-| **Ethereum (ETH)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | ![ETH QR](public/eth.png) |
-| **Solana (SOL)** | `5PMFQwZJAZg8oVFBKwCmuK8r2vv5F2cRcbGJBGuZNUFF` | ![SOL QR](public/sol.png) |
-| **Binance Coin (BNB)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | ![BNB QR](public/bnb.png) |
-
-</div>
-
-*Your support helps keep terminai free and continuously improving! 🚀*
 
 ## 📝 Development
 
