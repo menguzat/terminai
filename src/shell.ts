@@ -128,6 +128,75 @@ export class TerminaiShell {
     return `[AI] ${username}@${hostname} ${currentDir} % `;
   }
   
+  /**
+   * Detects the appropriate shell for the current platform
+   * @returns Object containing shell executable path and arguments array
+   */
+  private getShellConfig(): { shell: string; args: string[] } {
+    const platform = process.platform;
+    
+    switch (platform) {
+      case 'win32':
+        // Windows: Check for PowerShell first, then fallback to cmd.exe
+        const comSpec = process.env.ComSpec || 'cmd.exe';
+        
+        // Check if PowerShell is available and preferred
+        if (process.env.SHELL && process.env.SHELL.toLowerCase().includes('powershell')) {
+          return {
+            shell: 'powershell.exe',
+            args: ['-Command']
+          };
+        }
+        
+        // Default to cmd.exe on Windows
+        return {
+          shell: comSpec,
+          args: ['/c']
+        };
+        
+      case 'darwin':
+      case 'linux':
+        // Unix-like systems: Use SHELL environment variable or sensible defaults
+        const userShell = process.env.SHELL;
+        
+        if (userShell) {
+          return {
+            shell: userShell,
+            args: ['-c']
+          };
+        }
+        
+        // Fallback hierarchy for Unix systems
+        const fallbackShells = ['/bin/zsh', '/bin/bash', '/bin/sh'];
+        for (const shell of fallbackShells) {
+          try {
+            // Check if shell exists using fs.access
+            fs.accessSync(shell, fs.constants.F_OK);
+            return {
+              shell: shell,
+              args: ['-c']
+            };
+          } catch {
+            // Shell doesn't exist, try next one
+            continue;
+          }
+        }
+        
+        // Ultimate fallback
+        return {
+          shell: '/bin/sh',
+          args: ['-c']
+        };
+        
+      default:
+        // Unknown platform, try to use environment shell or fallback
+        return {
+          shell: process.env.SHELL || '/bin/sh',
+          args: ['-c']
+        };
+    }
+  }
+  
   private async executeCommand(command: string, skipAiTranslation: boolean = false, originalPrompt?: string): Promise<void> {
     return new Promise((resolve) => {
      // console.log(`[DEBUG] Executing command: ${command}`);
@@ -139,9 +208,12 @@ export class TerminaiShell {
         return;
       }
       
+      // Get platform-appropriate shell configuration
+      const shellConfig = this.getShellConfig();
+      
       // For other commands, spawn a new shell process
       // Fix 1: Use 'inherit' for stdin to allow interactive commands
-      const shellProcess = spawn('/bin/zsh', ['-c', command], {
+      const shellProcess = spawn(shellConfig.shell, [...shellConfig.args, command], {
         cwd: this.currentDirectory,
         stdio: ['inherit', 'pipe', 'pipe'] // Allow interactive input while capturing output
       });
