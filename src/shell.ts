@@ -14,6 +14,7 @@ export class TerminaiShell {
   private aiService: AiService | null = null;
   private historyFile: string;
   private currentRunningProcess: ChildProcess | null = null; // Track running process for signal handling
+  private aiSuggestionContext: { originalCommand: string; isAiSuggestion: boolean } | null = null; // Track AI suggestion context
   
   constructor() {
     this.configManager = new ConfigManager();
@@ -85,12 +86,23 @@ export class TerminaiShell {
           }
           
           if (trimmedInput === '') {
+            // Clear AI suggestion context if user just pressed enter with empty input
+            this.aiSuggestionContext = null;
             promptUser();
             return;
           }
           
           try {
-            await this.executeCommand(trimmedInput);
+            // Check if this is an AI-suggested command
+            if (this.aiSuggestionContext && this.aiSuggestionContext.isAiSuggestion) {
+              // Execute as AI-suggested command with original context
+              await this.executeCommand(trimmedInput, true, this.aiSuggestionContext.originalCommand);
+              // Clear the context after execution
+              this.aiSuggestionContext = null;
+            } else {
+              // Execute as regular user command
+              await this.executeCommand(trimmedInput);
+            }
           } catch (error) {
             console.error('[DEBUG] Command execution error:', error);
           }
@@ -109,10 +121,25 @@ export class TerminaiShell {
           console.log('✅ Command interrupted. Press Enter to continue.');
           // Don't resolve - just continue to next prompt
         } else {
-          // No command running, exit terminai
-          console.log('\n👋 Goodbye!');
-          this.cleanup();
-          resolve();
+          // Clear any AI suggestion context
+          if (this.aiSuggestionContext) {
+            console.log('\n❌ AI suggestion cancelled.');
+            this.aiSuggestionContext = null;
+            
+            // Clear the current line and any prefilled text
+            if (this.rl) {
+              this.rl.clearLine(0); // Clear the entire line
+              this.rl.cursorTo(0); // Move cursor to beginning
+              this.rl.write(''); // Clear any buffered input
+            }
+            
+            promptUser(); // Start a new prompt
+          } else {
+            // No command running, exit terminai
+            console.log('\n👋 Goodbye!');
+            this.cleanup();
+            resolve();
+          }
         }
       });
       
@@ -322,21 +349,20 @@ export class TerminaiShell {
       if (translation.explanation) {
         console.log(`📝 Explanation: ${translation.explanation}`);
       }
+      console.log('✏️  You can edit the command below and press Enter to execute, or Ctrl+C to cancel:');
 
-      // Ask for user confirmation
-      const userConfirmed = await this.askUserConfirmation();
+      // Add the original command to history
+      this.addToHistory(originalCommand);
       
-      if (userConfirmed) {
-        console.log('✅ Executing AI-suggested command...');
-        
-        // Add both commands to history before execution
-        // Add the original prompt first, then the AI command (so AI command is most recent)
-        this.addToHistory(originalCommand);
-        this.addToHistory(translation.command);
-        
-        await this.executeCommand(translation.command, true, originalCommand);
-      } else {
-        console.log('❌ Command execution cancelled by user');
+      // Set AI suggestion context so the next command is treated as AI-suggested
+      this.aiSuggestionContext = {
+        originalCommand: originalCommand,
+        isAiSuggestion: true
+      };
+      
+      // Prefill the AI-suggested command into the readline interface
+      if (this.rl) {
+        this.rl.write(translation.command);
       }
     } catch (error) {
       console.error('[DEBUG] Error in AI command translation:', error);
@@ -377,20 +403,18 @@ Please provide a corrected command that addresses the error and fulfills the use
       if (translation.explanation) {
         console.log(`📝 Explanation: ${translation.explanation}`);
       }
+      console.log('✏️  You can edit the fixed command below and press Enter to execute, or Ctrl+C to cancel:');
 
-      // Ask for user confirmation
-      const userConfirmed = await this.askUserConfirmation('❓ Execute this fixed command? (y/N): ');
-      
-      if (userConfirmed) {
-        console.log('✅ Executing AI-fixed command...');
-        
-        // Add the fixed command to history
-        this.addToHistory(translation.command);
-        
-        // Execute without further AI translation attempts to avoid infinite loops
-        await this.executeCommand(translation.command, true);
-      } else {
-        console.log('❌ Fixed command execution cancelled by user');
+      // Set AI suggestion context so the next command is treated as AI-suggested
+      // Keep the original command context for proper tracking
+      this.aiSuggestionContext = {
+        originalCommand: originalPrompt,
+        isAiSuggestion: true
+      };
+
+      // Prefill the AI-fixed command into the readline interface
+      if (this.rl) {
+        this.rl.write(translation.command);
       }
     } catch (error) {
       console.error('[DEBUG] Error in AI command fix:', error);
