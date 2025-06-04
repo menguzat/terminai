@@ -274,6 +274,16 @@ terminai
 
 Contributions welcome! Please feel free to submit a Pull Request.
 
+## 🚀 Upcoming Features
+
+We're constantly working to improve terminai! Here's what's coming next:
+
+- **🔄 Regenerate Command** - Didn't like the AI suggestion? Get alternative command options with a simple regenerate
+- **🛡️ Enhanced Error Handling** - Better recovery and suggestions when commands fail or produce errors
+- **💬 Multi-turn AI Context** - AI remembers your conversation for more intelligent follow-up commands and suggestions
+
+Stay tuned for more exciting features! 🎯
+
 ## 📄 License
 
 MIT License - see LICENSE file for details.
