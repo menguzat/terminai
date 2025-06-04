@@ -18,6 +18,13 @@ Terminai transforms your terminal experience by adding AI-powered command transl
 
 ## 🚀 Quick Start
 
+### Prerequisites
+
+**Node.js** (version 16.0 or higher) must be installed on your system.
+- Install via package manager (e.g., `brew install node` on macOS, `apt-get install nodejs npm` on Ubuntu)
+- Download from [nodejs.org](https://nodejs.org/)
+
+
 ### Installation
 
 ```bash
