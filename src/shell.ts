@@ -450,20 +450,44 @@ Please provide a corrected command that addresses the error and fulfills the use
 
   private getPathCommands(): string[] {
     try {
-      const pathOutput = execSync('echo $PATH', { 
-        encoding: 'utf8',
-        cwd: this.currentDirectory 
-      });
-      const paths = pathOutput.trim().split(':');
+      // Cross-platform PATH handling
+      const pathEnvVar = process.platform === 'win32' ? 'PATH' : 'PATH';
+      const pathSeparator = process.platform === 'win32' ? ';' : ':';
+      const pathValue = process.env[pathEnvVar] || '';
+      
+      const paths = pathValue.split(pathSeparator).filter(p => p.length > 0);
       const commands: string[] = [];
       
       for (const dirPath of paths) {
         try {
-          const commandsInDir = execSync(`ls "${dirPath}" 2>/dev/null || true`, { 
-            encoding: 'utf8',
-            cwd: this.currentDirectory 
-          });
-          commands.push(...commandsInDir.trim().split('\n').filter(cmd => cmd.length > 0));
+          // Use Node.js fs instead of shell commands for cross-platform compatibility
+          if (fs.existsSync(dirPath)) {
+            const files = fs.readdirSync(dirPath);
+            
+            // Filter for executable files (simplified approach)
+            for (const file of files) {
+              const fullPath = path.join(dirPath, file);
+              try {
+                const stats = fs.statSync(fullPath);
+                
+                // On Windows, check for .exe, .cmd, .bat extensions
+                // On Unix, check for executable permissions
+                if (process.platform === 'win32') {
+                  const ext = path.extname(file).toLowerCase();
+                  if (['.exe', '.cmd', '.bat', '.com'].includes(ext)) {
+                    commands.push(path.basename(file, ext)); // Remove extension for completion
+                  }
+                } else {
+                  // Unix-like systems: check if file is executable
+                  if (stats.isFile() && (stats.mode & parseInt('111', 8))) {
+                    commands.push(file);
+                  }
+                }
+              } catch {
+                // Skip files that can't be accessed
+              }
+            }
+          }
         } catch {
           // Skip directories that can't be read
         }
@@ -477,49 +501,54 @@ Please provide a corrected command that addresses the error and fulfills the use
 
   private getFileCompletions(partial: string): [string[], string] {
     try {
-      // Handle different completion cases
+      // Handle different completion cases with cross-platform path separators
       let searchPattern = partial;
       let searchDir = this.currentDirectory;
       
-      // If partial contains a path separator, extract directory part
-      if (partial.includes('/')) {
-        const lastSlash = partial.lastIndexOf('/');
-        const dirPart = partial.substring(0, lastSlash + 1);
-        searchPattern = partial.substring(lastSlash + 1);
+      // Support both / and \ path separators
+      const pathSeparator = partial.includes('\\') ? '\\' : '/';
+      const lastSeparatorIndex = Math.max(partial.lastIndexOf('/'), partial.lastIndexOf('\\'));
+      
+      if (lastSeparatorIndex !== -1) {
+        const dirPart = partial.substring(0, lastSeparatorIndex + 1);
+        searchPattern = partial.substring(lastSeparatorIndex + 1);
         
-        if (dirPart.startsWith('/')) {
+        // Handle absolute vs relative paths cross-platform
+        if (path.isAbsolute(dirPart)) {
           searchDir = dirPart;
         } else {
           searchDir = path.resolve(this.currentDirectory, dirPart);
         }
       }
       
-      // Get files and directories
-      const lsOutput = execSync(`ls -1a "${searchDir}" 2>/dev/null || true`, { 
-        encoding: 'utf8' 
-      });
-      
-      const entries = lsOutput.trim().split('\n').filter(entry => 
-        entry.length > 0 && 
-        entry !== '.' && 
-        entry !== '..' &&
-        entry.startsWith(searchPattern)
-      );
-      
-      // Add directory separator for directories
-      const completions = entries.map(entry => {
-        const fullPath = path.join(searchDir, entry);
-        try {
-          const stats = execSync(`test -d "${fullPath}" && echo "dir" || echo "file"`, { 
-            encoding: 'utf8' 
-          });
-          return stats.trim() === 'dir' ? entry + '/' : entry;
-        } catch {
-          return entry;
+      // Use Node.js fs instead of shell commands for cross-platform compatibility
+      try {
+        if (!fs.existsSync(searchDir)) {
+          return [[], searchPattern];
         }
-      });
-      
-      return [completions, searchPattern];
+        
+        const entries = fs.readdirSync(searchDir, { withFileTypes: true })
+          .filter(entry => {
+            // Filter out hidden files on Unix (starting with .), but include them on Windows
+            const includeHidden = process.platform === 'win32' || searchPattern.startsWith('.');
+            const matchesPattern = entry.name.startsWith(searchPattern);
+            const notCurrentOrParent = entry.name !== '.' && entry.name !== '..';
+            
+            return matchesPattern && notCurrentOrParent && (includeHidden || !entry.name.startsWith('.'));
+          })
+          .map(entry => {
+            // Add appropriate separator for directories
+            if (entry.isDirectory()) {
+              return entry.name + (process.platform === 'win32' ? '\\' : '/');
+            }
+            return entry.name;
+          });
+        
+        return [entries, searchPattern];
+      } catch (error) {
+        // Fallback if directory can't be read
+        return [[], searchPattern];
+      }
     } catch (error) {
       return [[], partial];
     }
