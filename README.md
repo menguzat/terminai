@@ -136,20 +136,7 @@ build  start  test
 - **Network Operations**: Port scanning, connectivity testing, firewall configuration
 - **File Management**: Batch operations, recursive searches, permission changes
 
-## 💖 Support the Project
 
-If terminai has made your command line experience better, consider supporting its development:
-
-<div align="center">
-
-| Cryptocurrency | Address | QR Code |
-|---|---|---|
-| **Bitcoin (BTC)** | `bc1qy6nwnlzfxxr45kav5qnm72fr4s8607e02ace6f` | <img src="public/btc.png" alt="BTC QR" width="120"> |
-| **Ethereum (ETH)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | <img src="public/eth.png" alt="ETH QR" width="120"> |
-| **Solana (SOL)** | `5PMFQwZJAZg8oVFBKwCmuK8r2vv5F2cRcbGJBGuZNUFF` | <img src="public/sol.png" alt="SOL QR" width="120"> |
-| **Binance Coin (BNB)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | <img src="public/bnb.png" alt="BNB QR" width="120"> |
-
-</div>
 
 ## 🔧 Configuration
 
@@ -296,6 +283,21 @@ Stay tuned for more exciting features! 🎯
 MIT License - see LICENSE file for details.
 
 ---
+
+## 💖 Support the Project
+
+If terminai has made your command line experience better, consider supporting its development:
+
+<div align="center">
+
+| Cryptocurrency | Address | QR Code |
+|---|---|---|
+| **Bitcoin (BTC)** | `bc1qy6nwnlzfxxr45kav5qnm72fr4s8607e02ace6f` | <img src="public/btc.png" alt="BTC QR" width="120"> |
+| **Ethereum (ETH)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | <img src="public/eth.png" alt="ETH QR" width="120"> |
+| **Solana (SOL)** | `5PMFQwZJAZg8oVFBKwCmuK8r2vv5F2cRcbGJBGuZNUFF` | <img src="public/sol.png" alt="SOL QR" width="120"> |
+| **Binance Coin (BNB)** | `0x1a6ba4d715553abdadac32817bee35ca1ec3c04a` | <img src="public/bnb.png" alt="BNB QR" width="120"> |
+
+</div>
 
 **Happy commanding! 🚀**
 
