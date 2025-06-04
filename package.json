@@ -1,6 +1,6 @@
 {
   "name": "@menguzat/termin-ai",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "AI-enhanced shell wrapper that bridges natural language and command line",
   "main": "dist/index.js",
   "bin": {
