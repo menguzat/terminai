@@ -126,11 +126,15 @@ export class TerminaiShell {
             console.log('\n❌ AI suggestion cancelled.');
             this.aiSuggestionContext = null;
             
-            // Clear the current line and any prefilled text
+            // Clear the prefilled text by accessing the internal line buffer
             if (this.rl) {
-              this.rl.clearLine(0); // Clear the entire line
-              this.rl.cursorTo(0); // Move cursor to beginning
-              this.rl.write(''); // Clear any buffered input
+              // Clear the internal line buffer - this accesses readline internals
+              const readlineWithInternals = this.rl as any;
+              if (readlineWithInternals.line !== undefined) {
+                readlineWithInternals.line = '';
+                readlineWithInternals.cursor = 0;
+                readlineWithInternals._refreshLine();
+              }
             }
             
             promptUser(); // Start a new prompt
