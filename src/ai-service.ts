@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { DirectoryContext } from './shell';
 
 export interface CommandTranslationResult {
   command: string;
@@ -15,12 +16,69 @@ export class AiService {
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash-preview-04-17' });
   }
 
-  async translateCommand(userInput: string): Promise<CommandTranslationResult | null> {
+  async translateCommand(userInput: string, directoryContext?: DirectoryContext): Promise<CommandTranslationResult | null> {
     try {
     //  console.log(`[DEBUG] Translating command via AI: "${userInput}"`);
       
-      const systemPrompt = this.createSystemPrompt();
-      const prompt = `${systemPrompt}\n\nUser input: "${userInput}"`;
+      const systemPrompt = this.createSystemPrompt(directoryContext);
+      let prompt = `${systemPrompt}\n\nUser input: "${userInput}"`;
+      
+      // Add directory context to the prompt if available
+      if (directoryContext && !directoryContext.error) {
+        prompt += `\n\nCurrent directory context:\n`;
+        prompt += `Working directory: ${directoryContext.currentDirectory}\n`;
+        prompt += `Directory contents:\n${directoryContext.contents}`;
+        
+        // Add environment information if available
+        if (directoryContext.environment) {
+          prompt += `\n\nDevelopment Environment Context:\n`;
+          
+          // Python environment info
+          if (directoryContext.environment.python?.isVirtualEnv) {
+            const pyEnv = directoryContext.environment.python;
+            prompt += `- Python Virtual Environment: ACTIVE (${pyEnv.envType}`;
+            if (pyEnv.envName) prompt += ` - ${pyEnv.envName}`;
+            prompt += `)\n`;
+          } else if (directoryContext.environment.python?.envName) {
+            prompt += `- Python Virtual Environment: Available but not active (${directoryContext.environment.python.envName})\n`;
+          }
+          
+          // Node.js environment info
+          if (directoryContext.environment.node?.hasPackageJson) {
+            const nodeEnv = directoryContext.environment.node;
+            prompt += `- Node.js Project: Detected`;
+            if (nodeEnv.packageManager) prompt += ` (${nodeEnv.packageManager})`;
+            if (nodeEnv.hasNodeModules) prompt += ` with node_modules installed`;
+            prompt += `\n`;
+          }
+          
+          // Git repository info
+          if (directoryContext.environment.git?.isGitRepo) {
+            const gitEnv = directoryContext.environment.git;
+            prompt += `- Git Repository: Active`;
+            if (gitEnv.branch) prompt += ` (branch: ${gitEnv.branch})`;
+            prompt += `\n`;
+          }
+          
+          // Docker environment info
+          const dockerEnv = directoryContext.environment.docker;
+          if (dockerEnv?.hasDockerfile || dockerEnv?.hasDockerCompose) {
+            prompt += `- Docker: Detected (`;
+            const dockerFeatures = [];
+            if (dockerEnv.hasDockerfile) dockerFeatures.push('Dockerfile');
+            if (dockerEnv.hasDockerCompose) dockerFeatures.push('Docker Compose');
+            prompt += dockerFeatures.join(', ') + `)\n`;
+          }
+          
+          // Other language environments
+          const otherEnv = directoryContext.environment.other;
+          if (otherEnv?.hasGemfile) prompt += `- Ruby Project: Detected (Gemfile)\n`;
+          if (otherEnv?.hasCargoToml) prompt += `- Rust Project: Detected (Cargo.toml)\n`;
+          if (otherEnv?.hasGoMod) prompt += `- Go Project: Detected (go.mod)\n`;
+        }
+      } else if (directoryContext?.error) {
+        prompt += `\n\nNote: Could not get directory context - ${directoryContext.error}`;
+      }
 
       const result = await this.model.generateContent(prompt);
       const response = await result.response;
@@ -45,10 +103,48 @@ export class AiService {
     }
   }
 
-  private createSystemPrompt(): string {
+  private createSystemPrompt(directoryContext?: DirectoryContext): string {
     const osInfo = process.platform === 'darwin' ? 'macOS' : process.platform;
     
-    return `You are a highly precise command-line assistant that translates natural language requests into shell commands specifically for **${osInfo}**. Your primary goal is to generate the *exact* command that best and most safely fulfills the user's intention on this operating system, including interactions with common command-line interface (CLI) tools.
+    let contextInstructions = '';
+    if (directoryContext && !directoryContext.error) {
+      contextInstructions = `
+
+DIRECTORY CONTEXT AVAILABLE:
+You have been provided with the current working directory and its contents. Use this information to:
+- Reference actual files and directories that exist in the current location
+- Suggest commands that work with the specific files present
+- Provide more accurate file paths and operations
+- Understand the project structure and context (e.g., if package.json exists, assume Node.js project)
+- Make suggestions that are relevant to the current directory's content
+- When users ask to "copy", "move", "delete", or "edit" files, prioritize actual filenames from the directory listing
+- Detect file types and suggest appropriate commands (e.g., if .js files are present, suggest Node.js related commands)
+- Use relative paths when files are in the current directory instead of absolute paths
+
+VIRTUAL ENVIRONMENT & DEVELOPMENT CONTEXT:
+You are also provided with development environment information. Use this to:
+- For Python: If a virtual environment is ACTIVE, use commands that work within that environment (python, pip, etc.)
+- For Python: If a virtual environment is available but not active, suggest activating it first when relevant
+- For Node.js: Use the detected package manager (npm, yarn, pnpm) for dependency commands
+- For Git: Include branch information in git-related suggestions and be aware of repository status
+- For Docker: Suggest docker commands when Dockerfile or docker-compose files are present
+- For language-specific projects: Use appropriate commands for the detected language/framework
+
+CONTEXT-AWARE EXAMPLES:
+If directory contains "package.json" and user asks "install dependencies" → suggest "npm install"
+If directory contains "video.mp4" and user asks "extract audio" → suggest "ffmpeg -i video.mp4 -vn -acodec libmp3lame audio.mp3"
+If directory contains "app.py" and user asks "run the app" → suggest "python app.py" or "python3 app.py"
+If user asks "list typescript files" and .ts files exist → suggest "ls *.ts" or reference actual .ts filenames
+If user asks "copy the config file" and config.json exists → suggest "cp config.json config.json.bak"
+If Python virtual environment is ACTIVE and user asks "install pandas" → suggest "pip install pandas"
+If Python virtual environment exists but not active and user asks "install pandas" → suggest "source venv/bin/activate && pip install pandas" (or appropriate activation for detected env type)
+If Node.js project with yarn detected and user asks "add dependency" → suggest "yarn add <package>"
+If Git repository on 'main' branch and user asks "create feature branch" → suggest "git checkout -b feature/branch-name"
+
+Always prefer using actual file names and paths from the directory context when they match the user's intent.`;
+    }
+    
+    return `You are a highly precise command-line assistant that translates natural language requests into shell commands specifically for **${osInfo}**. Your primary goal is to generate the *exact* command that best and most safely fulfills the user's intention on this operating system, including interactions with common command-line interface (CLI) tools.${contextInstructions}
 
 IMPORTANT INSTRUCTIONS:
 1.  You MUST respond ONLY with valid JSON in this exact format: \`{"command": "<shell_command>"}\`

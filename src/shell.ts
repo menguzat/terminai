@@ -6,6 +6,38 @@ import * as fs from 'fs';
 import { ConfigManager } from './config';
 import { AiService } from './ai-service';
 
+export interface DirectoryContext {
+  currentDirectory: string;
+  contents: string;
+  error?: string;
+  environment?: {
+    python?: {
+      isVirtualEnv: boolean;
+      envType?: 'venv' | 'virtualenv' | 'conda' | 'poetry' | 'pipenv';
+      envName?: string;
+      envPath?: string;
+    };
+    node?: {
+      hasNodeModules: boolean;
+      packageManager?: 'npm' | 'yarn' | 'pnpm';
+      hasPackageJson: boolean;
+    };
+    git?: {
+      isGitRepo: boolean;
+      branch?: string;
+    };
+    docker?: {
+      hasDockerfile: boolean;
+      hasDockerCompose: boolean;
+    };
+    other?: {
+      hasGemfile: boolean; // Ruby
+      hasCargoToml: boolean; // Rust
+      hasGoMod: boolean; // Go
+    };
+  };
+}
+
 export class TerminaiShell {
   private shellProcess: ChildProcessWithoutNullStreams | null = null;
   private rl: readline.Interface | null = null;
@@ -228,6 +260,78 @@ export class TerminaiShell {
     }
   }
   
+  /**
+   * Gets directory context including current directory path and contents
+   * Works cross-platform with appropriate directory listing commands
+   * @returns DirectoryContext object with directory info and contents
+   */
+  private async getDirectoryContext(): Promise<DirectoryContext> {
+    const context: DirectoryContext = {
+      currentDirectory: this.currentDirectory,
+      contents: '',
+      error: undefined
+    };
+
+    try {
+      // Get platform-appropriate directory listing command
+      const platform = process.platform;
+      let listCommand: string;
+
+      switch (platform) {
+        case 'win32':
+          // Check if we're using PowerShell or CMD
+          const shellConfig = this.getShellConfig();
+          if (shellConfig.shell.toLowerCase().includes('powershell')) {
+            listCommand = 'Get-ChildItem -Force | Format-Table -AutoSize';
+          } else {
+            listCommand = 'dir /a';
+          }
+          break;
+        
+        case 'darwin':
+        case 'linux':
+        default:
+          listCommand = 'ls -al';
+          break;
+      }
+
+      // Execute the directory listing command
+      const output = execSync(listCommand, {
+        cwd: this.currentDirectory,
+        encoding: 'utf8',
+        timeout: 5000, // 5 second timeout to prevent hanging
+        maxBuffer: 1024 * 1024 // 1MB max buffer to prevent memory issues
+      });
+
+      context.contents = output.toString().trim();
+      
+      // console.log(`[DEBUG] Directory context gathered for: ${context.currentDirectory}`);
+      // console.log(`[DEBUG] Directory contents length: ${context.contents.length} chars`);
+      
+    } catch (error: any) {
+      context.error = `Failed to get directory contents: ${error.message}`;
+      console.log(`[DEBUG] Error getting directory context: ${error.message}`);
+      
+      // Fallback: try to get at least basic file listing using Node.js fs
+      try {
+        const files = fs.readdirSync(this.currentDirectory);
+        context.contents = `Files in directory:\n${files.join('\n')}`;
+        context.error = undefined; // Clear error since we got fallback data
+      } catch (fallbackError: any) {
+        context.error = `Could not access directory: ${fallbackError.message}`;
+      }
+    }
+
+    // Detect development environments
+    try {
+      context.environment = await this.detectEnvironments();
+    } catch (envError: any) {
+      console.log(`[DEBUG] Error detecting environments: ${envError.message}`);
+    }
+
+    return context;
+  }
+  
   private async executeCommand(command: string, skipAiTranslation: boolean = false, originalPrompt?: string): Promise<void> {
     return new Promise((resolve) => {
      // console.log(`[DEBUG] Executing command: ${command}`);
@@ -342,7 +446,10 @@ export class TerminaiShell {
     try {
       console.log('🔄 Asking AI to translate the command...');
       
-      const translation = await this.aiService!.translateCommand(originalCommand);
+      // Gather directory context for better AI suggestions
+      const directoryContext = await this.getDirectoryContext();
+      
+      const translation = await this.aiService!.translateCommand(originalCommand, directoryContext);
       
       if (!translation || !translation.command) {
         console.log('❌ AI could not translate the command');
@@ -386,6 +493,9 @@ export class TerminaiShell {
       
       console.log('🔄 Asking AI to fix the failed command...');
       
+      // Gather directory context for better AI fix suggestions  
+      const directoryContext = await this.getDirectoryContext();
+      
       // Create a detailed prompt with context
       const fixPrompt = `The user originally asked: "${originalPrompt}"
       
@@ -396,7 +506,7 @@ ${errorOutput.trim()}
 
 Please provide a corrected command that addresses the error and fulfills the user's original request.`;
 
-      const translation = await this.aiService!.translateCommand(fixPrompt);
+      const translation = await this.aiService!.translateCommand(fixPrompt, directoryContext);
       
       if (!translation || !translation.command) {
         console.log('❌ AI could not provide a fix for the command');
@@ -632,5 +742,170 @@ Please provide a corrected command that addresses the error and fulfills the use
     if (this.shellProcess) {
       this.shellProcess.kill();
     }
+  }
+
+  /**
+   * Detects various development environments and virtual environments
+   * @returns Environment detection results
+   */
+  private async detectEnvironments(): Promise<DirectoryContext['environment']> {
+    const environment: NonNullable<DirectoryContext['environment']> = {};
+
+    try {
+      // Get list of files and directories in current directory
+      const items = fs.readdirSync(this.currentDirectory);
+      const files = new Set(items);
+
+      // Python environment detection
+      environment.python = this.detectPythonEnvironment(files);
+
+      // Node.js environment detection  
+      environment.node = this.detectNodeEnvironment(files);
+
+      // Git repository detection
+      environment.git = await this.detectGitEnvironment();
+
+      // Docker environment detection
+      environment.docker = this.detectDockerEnvironment(files);
+
+      // Other language environments
+      environment.other = this.detectOtherEnvironments(files);
+
+    } catch (error: any) {
+      console.log(`[DEBUG] Error in environment detection: ${error.message}`);
+    }
+
+    return environment;
+  }
+
+  private detectPythonEnvironment(files: Set<string>): NonNullable<DirectoryContext['environment']>['python'] {
+    const pythonEnv = {
+      isVirtualEnv: false,
+      envType: undefined as any,
+      envName: undefined as string | undefined,
+      envPath: undefined as string | undefined
+    };
+
+    // Check for virtual environment indicators
+    const virtualEnvVar = process.env.VIRTUAL_ENV;
+    const condaEnvVar = process.env.CONDA_DEFAULT_ENV;
+    const poetryEnvVar = process.env.POETRY_ACTIVE;
+
+    if (virtualEnvVar) {
+      pythonEnv.isVirtualEnv = true;
+      pythonEnv.envType = 'venv';
+      pythonEnv.envPath = virtualEnvVar;
+      pythonEnv.envName = path.basename(virtualEnvVar);
+    } else if (condaEnvVar) {
+      pythonEnv.isVirtualEnv = true;
+      pythonEnv.envType = 'conda';
+      pythonEnv.envName = condaEnvVar;
+    } else if (poetryEnvVar) {
+      pythonEnv.isVirtualEnv = true;
+      pythonEnv.envType = 'poetry';
+    } else if (process.env.PIPENV_ACTIVE) {
+      pythonEnv.isVirtualEnv = true;
+      pythonEnv.envType = 'pipenv';
+    }
+
+    // Check for Python project files
+    if (files.has('requirements.txt') || files.has('pyproject.toml') || files.has('setup.py') || files.has('Pipfile')) {
+      // If we found Python project files but no active virtual env, check for local venv folders
+      if (!pythonEnv.isVirtualEnv) {
+        const commonVenvNames = ['venv', 'env', '.venv', '.env'];
+        for (const venvName of commonVenvNames) {
+          if (files.has(venvName)) {
+            try {
+              const venvPath = path.join(this.currentDirectory, venvName);
+              const stats = fs.statSync(venvPath);
+              if (stats.isDirectory()) {
+                pythonEnv.envName = venvName;
+                pythonEnv.envPath = venvPath;
+                // Note: not marking as active since it's not currently activated
+              }
+            } catch {
+              // Ignore errors checking venv directories
+            }
+          }
+        }
+      }
+    }
+
+    return pythonEnv;
+  }
+
+  private detectNodeEnvironment(files: Set<string>): NonNullable<DirectoryContext['environment']>['node'] {
+    const nodeEnv = {
+      hasNodeModules: files.has('node_modules'),
+      hasPackageJson: files.has('package.json'),
+      packageManager: undefined as any
+    };
+
+    // Detect package manager
+    if (files.has('yarn.lock')) {
+      nodeEnv.packageManager = 'yarn';
+    } else if (files.has('pnpm-lock.yaml')) {
+      nodeEnv.packageManager = 'pnpm';
+    } else if (files.has('package-lock.json') || nodeEnv.hasPackageJson) {
+      nodeEnv.packageManager = 'npm';
+    }
+
+    return nodeEnv;
+  }
+
+  private async detectGitEnvironment(): Promise<NonNullable<DirectoryContext['environment']>['git']> {
+    const gitEnv = {
+      isGitRepo: false,
+      branch: undefined as string | undefined
+    };
+
+    try {
+      // Check if .git directory exists
+      const gitPath = path.join(this.currentDirectory, '.git');
+      if (fs.existsSync(gitPath)) {
+        gitEnv.isGitRepo = true;
+
+        // Try to get current branch
+        try {
+          const branchOutput = execSync('git branch --show-current', {
+            cwd: this.currentDirectory,
+            encoding: 'utf8',
+            timeout: 2000
+          });
+          gitEnv.branch = branchOutput.toString().trim();
+        } catch {
+          // Fallback: try to read from .git/HEAD
+          try {
+            const headPath = path.join(gitPath, 'HEAD');
+            const headContent = fs.readFileSync(headPath, 'utf8');
+            const match = headContent.match(/ref: refs\/heads\/(.+)/);
+            if (match) {
+              gitEnv.branch = match[1].trim();
+            }
+          } catch {
+            // Unable to determine branch
+          }
+        }
+      }
+    } catch (error: any) {
+      console.log(`[DEBUG] Error detecting git environment: ${error.message}`);
+    }
+
+    return gitEnv;
+  }
+
+  private detectDockerEnvironment(files: Set<string>): NonNullable<DirectoryContext['environment']>['docker'] {
+    return {
+      hasDockerfile: files.has('Dockerfile') || files.has('dockerfile'),
+      hasDockerCompose: files.has('docker-compose.yml') || files.has('docker-compose.yaml') || files.has('compose.yml')
+    };
+  }
+
+  private detectOtherEnvironments(files: Set<string>): NonNullable<DirectoryContext['environment']>['other'] {
+    return {
+      hasGemfile: files.has('Gemfile'), // Ruby
+      hasCargoToml: files.has('Cargo.toml'), // Rust
+      hasGoMod: files.has('go.mod') // Go
+    };
   }
 } 
