@@ -120,6 +120,27 @@ build  start  test
 4. **User Confirmation**: You review and approve the suggestion before execution
 5. **Safe Execution**: The suggested command runs with full output, just like typing it yourself
 
+## 🧠 Context-Aware Intelligence
+
+Terminai automatically detects your development environment and provides smarter suggestions:
+
+- **Virtual Environments**: Detects Python venv/conda/poetry environments and suggests appropriate activation commands
+- **Package Managers**: Identifies npm/yarn/pnpm and uses the correct package manager for your project
+- **Project Types**: Recognizes Node.js, Python, Git repos, Docker, and other development environments
+- **File Context**: References actual files in your directory for more relevant suggestions
+
+**Examples:**
+
+```bash
+# In a Python project with inactive virtual environment
+[AI] user@hostname myproject % install pandas
+💡 AI suggests: source venv/bin/activate && pip install pandas
+
+# In a Node.js project with yarn
+[AI] user@hostname webapp % add lodash as dependency  
+💡 AI suggests: yarn add lodash
+```
+
 ## 🛡️ Security & Privacy
 
 - **API Key Storage**: Your Gemini API key is stored locally in `~/.terminai/config.json` with user-only permissions (600)
